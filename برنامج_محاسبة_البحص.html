@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة نشاط البحص</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --stone-900:#211f1c;
+  --stone-800:#332f2a;
+  --stone-700:#4a443c;
+  --sand-100:#e9e2d3;
+  --sand-50:#f2ede2;
+  --clay-600:#b8541f;
+  --clay-700:#963f14;
+  --slate-500:#5b6b75;
+  --moss-600:#4a6b52;
+  --danger:#a13a2f;
+  --white:#fffdf9;
+  --line:#d9cfba;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'IBM Plex Sans Arabic', 'Tajawal', sans-serif;
+  background:var(--sand-50);
+  color:var(--stone-900);
+  min-height:100vh;
+}
+.app{ display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar{
+  width:230px; background:var(--stone-900); color:var(--sand-100);
+  display:flex; flex-direction:column; flex-shrink:0;
+  border-left:5px solid var(--clay-600);
+}
+.brand{
+  padding:22px 18px 16px; border-bottom:1px solid rgba(255,255,255,.08);
+}
+.brand h1{
+  font-family:'Tajawal',sans-serif; font-weight:900; font-size:19px; line-height:1.3;
+  color:var(--white);
+}
+.brand span{ display:block; font-size:11px; color:var(--sand-100); opacity:.55; margin-top:4px; letter-spacing:.5px;}
+nav{ padding:14px 10px; display:flex; flex-direction:column; gap:3px; flex:1; }
+.nav-btn{
+  display:flex; align-items:center; gap:10px;
+  background:none; border:none; color:var(--sand-100); opacity:.8;
+  padding:11px 12px; border-radius:8px; font-size:14.5px; font-weight:500;
+  cursor:pointer; text-align:right; font-family:inherit; transition:.15s;
+}
+.nav-btn:hover{ background:rgba(255,255,255,.06); opacity:1; }
+.nav-btn.active{ background:var(--clay-600); color:var(--white); opacity:1; font-weight:700;}
+.nav-icon{ font-size:17px; width:20px; text-align:center; }
+.sidebar-foot{ padding:14px 18px; font-size:10.5px; color:var(--sand-100); opacity:.4; border-top:1px solid rgba(255,255,255,.08);}
+
+/* Main */
+main{ flex:1; padding:26px 34px; overflow-x:auto; }
+.page-title{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;}
+.page-title h2{ font-family:'Tajawal',sans-serif; font-weight:900; font-size:24px; color:var(--stone-900);}
+.page-title p{ font-size:13px; color:var(--stone-700); opacity:.65; margin-top:2px;}
+
+.btn{
+  background:var(--clay-600); color:var(--white); border:none; padding:10px 18px;
+  border-radius:8px; font-family:inherit; font-weight:700; font-size:14px; cursor:pointer;
+  transition:.15s;
+}
+.btn:hover{ background:var(--clay-700); }
+.btn.secondary{ background:transparent; color:var(--stone-800); border:1.5px solid var(--line);}
+.btn.secondary:hover{ background:var(--sand-100); }
+.btn.danger{ background:transparent; color:var(--danger); border:1.5px solid var(--danger); padding:6px 12px; font-size:12.5px;}
+.btn:focus-visible, .nav-btn:focus-visible, input:focus-visible, select:focus-visible{ outline:2.5px solid var(--slate-500); outline-offset:2px; }
+
+/* Cards / KPIs */
+.kpi-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:24px;}
+.kpi{
+  background:var(--white); border:1px solid var(--line); border-radius:12px; padding:16px 18px;
+  border-top:4px solid var(--slate-500);
+}
+.kpi.clay{ border-top-color:var(--clay-600); }
+.kpi.moss{ border-top-color:var(--moss-600); }
+.kpi.danger{ border-top-color:var(--danger); }
+.kpi .label{ font-size:12.5px; color:var(--stone-700); opacity:.7; font-weight:500;}
+.kpi .value{ font-family:'Tajawal',sans-serif; font-size:26px; font-weight:900; margin-top:6px; color:var(--stone-900);}
+.kpi .sub{ font-size:11.5px; color:var(--stone-700); opacity:.55; margin-top:3px;}
+
+.panel{ background:var(--white); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:20px;}
+.panel h3{ font-family:'Tajawal',sans-serif; font-size:16px; font-weight:700; margin-bottom:14px; color:var(--stone-900);}
+
+table{ width:100%; border-collapse:collapse; font-size:13.5px;}
+th{ text-align:right; padding:10px 8px; color:var(--stone-700); font-weight:700; border-bottom:2px solid var(--line); font-size:12.5px; white-space:nowrap;}
+td{ padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap;}
+tr:hover td{ background:var(--sand-50); }
+.empty-row td{ text-align:center; padding:30px; color:var(--stone-700); opacity:.5; }
+.pill{ padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700; }
+.pill.paid{ background:#e5efe6; color:var(--moss-600); }
+.pill.unpaid{ background:#f7e5e1; color:var(--danger); }
+.pill.partial{ background:#fbf0d9; color:#8a6516; }
+
+.form-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:14px;}
+label{ font-size:12.5px; font-weight:600; color:var(--stone-700); display:block; margin-bottom:5px;}
+input, select{
+  width:100%; padding:9px 10px; border:1.5px solid var(--line); border-radius:7px;
+  font-family:inherit; font-size:13.5px; background:var(--white); color:var(--stone-900);
+}
+.actions-row{ display:flex; gap:10px; justify-content:flex-start; }
+
+.section{ display:none; }
+.section.active{ display:block; }
+
+.empty-state{ text-align:center; padding:50px 20px; color:var(--stone-700); }
+.empty-state .icon{ font-size:38px; margin-bottom:10px; opacity:.5;}
+.empty-state p{ opacity:.6; font-size:13.5px; }
+
+.tag-del{ background:none; border:none; cursor:pointer; color:var(--danger); font-size:15px; padding:4px 6px; border-radius:5px;}
+.tag-del:hover{ background:#f7e5e1; }
+
+.toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--stone-900); color:var(--white); padding:11px 20px; border-radius:9px;
+  font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:.25s;
+  z-index:999; box-shadow:0 6px 20px rgba(0,0,0,.2);
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
+
+@media(max-width:760px){
+  .app{ flex-direction:column; }
+  .sidebar{ width:100%; flex-direction:row; overflow-x:auto; border-left:none; border-bottom:5px solid var(--clay-600);}
+  .brand{ display:none; }
+  nav{ flex-direction:row; padding:10px; }
+  .nav-btn{ white-space:nowrap; }
+  .sidebar-foot{ display:none; }
+  main{ padding:14px; }
+  .page-title{ flex-direction:column; align-items:flex-start; }
+  .toolbar{ width:100%; }
+  .toolbar .btn, .toolbar .btn.secondary{ flex:1; }
+  table{ font-size:12px; }
+  th, td{ padding:8px 6px; }
+}
+
+/* Toolbar (export / print) */
+.toolbar{ display:flex; gap:8px; flex-wrap:wrap; }
+.toolbar .btn.secondary{ padding:9px 14px; font-size:13px; }
+
+/* Attachments */
+.tag-attach{ background:none; border:none; cursor:pointer; font-size:15px; padding:4px 6px; border-radius:5px; position:relative; }
+.tag-attach:hover{ background:var(--sand-100); }
+.attach-badge{ position:absolute; top:-2px; left:-4px; background:var(--clay-600); color:var(--white); border-radius:50%; font-size:9.5px; width:15px; height:15px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.modal-overlay{ position:fixed; inset:0; background:rgba(33,31,28,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+.modal-overlay.show{ display:flex; }
+.modal-box{ background:var(--white); border-radius:14px; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; padding:22px; }
+.modal-box h3{ font-family:'Tajawal',sans-serif; font-size:16.5px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+.modal-close{ background:none; border:none; font-size:20px; cursor:pointer; color:var(--stone-700); }
+.attach-item{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+.attach-item a{ color:var(--slate-500); text-decoration:none; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px; }
+.attach-item a:hover{ text-decoration:underline; }
+.attach-empty{ text-align:center; color:var(--stone-700); opacity:.55; padding:16px 0; font-size:13px; }
+
+@media print{
+  .sidebar, .btn, .toolbar, .tag-del, .tag-attach, form, .modal-overlay{ display:none !important; }
+  main{ padding:0; }
+  .panel{ border:1px solid #ccc; break-inside:avoid; }
+  body{ background:#fff; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>نشاط البحص</h1>
+      <span>نظام إدارة وحسابات</span>
+    </div>
+    <nav id="navBar"></nav>
+    <div class="sidebar-foot">تُحفظ بياناتك محلياً على هذا الجهاز (قاعدة بيانات داخلية IndexedDB) — خذ نسخة احتياطية بشكل دوري من صفحة "النسخ الاحتياطي"</div>
+  </aside>
+  <main id="mainArea"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="attachModalOverlay">
+  <div class="modal-box">
+    <h3><span>المرفقات</span><button class="modal-close" id="attachModalClose">✕</button></h3>
+    <div id="attachList"></div>
+    <div style="margin-top:14px;">
+      <label>إضافة مرفق (صورة أو PDF)</label>
+      <input type="file" id="attachFileInput" accept="image/*,.pdf">
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Storage helpers (IndexedDB with localStorage fallback/migration) ----------
+const KEY = 'gravel_biz_data_v1';
+const IDB_NAME = 'gravel_biz_db';
+const IDB_STORE = 'kv';
+let DB = { customers:[], suppliers:[], products:[], sales:[], purchases:[], transport:[], expenses:[], crushers:[], production:[], vehicles:[], drivers:[], vehicleExpenses:[], assets:[], warehouses:[], stock:[], transfers:[], vouchers:[], attachments:[] };
+let loaded = false;
+let idbAvailable = true;
+
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){ reject(new Error('no-idb')); return; }
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ if(!req.result.objectStoreNames.contains(IDB_STORE)) req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbGet(key){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(IDB_STORE,'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbSet(key,val){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(val,key);
+    tx.oncomplete = ()=> resolve(true);
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+
+function ensureDefaults(){
+  DB.crushers = DB.crushers || [];
+  DB.production = DB.production || [];
+  DB.vehicles = DB.vehicles || [];
+  DB.drivers = DB.drivers || [];
+  DB.vehicleExpenses = DB.vehicleExpenses || [];
+  DB.assets = DB.assets || [];
+  DB.warehouses = DB.warehouses || [];
+  DB.stock = DB.stock || [];
+  DB.transfers = DB.transfers || [];
+  DB.vouchers = DB.vouchers || [];
+  DB.attachments = DB.attachments || [];
+  if(DB.warehouses.length===0){
+    DB.warehouses.push({ id:uid(), name:'المخزن الرئيسي', location:'' });
+  }
+  // make sure every product has a stock row in some warehouse reflecting its qty
+  const mainWh = DB.warehouses[0].id;
+  DB.products.forEach(p=>{
+    const totalInStock = DB.stock.filter(s=>s.productId===p.id).reduce((a,s)=>a+s.qty,0);
+    const diff = (p.qty||0) - totalInStock;
+    if(Math.abs(diff) > 0.0001){
+      let row = DB.stock.find(s=>s.productId===p.id && s.warehouseId===mainWh);
+      if(!row){ row = { id:uid(), productId:p.id, warehouseId:mainWh, qty:0 }; DB.stock.push(row); }
+      row.qty += diff;
+    }
+  });
+}
+
+async function loadDB(){
+  try{
+    const idbVal = await idbGet(KEY);
+    if(idbVal){ DB = idbVal; }
+    else {
+      // migrate from localStorage if present
+      const raw = localStorage.getItem(KEY);
+      if(raw) DB = JSON.parse(raw);
+    }
+  }catch(e){
+    idbAvailable = false;
+    try{ const raw = localStorage.getItem(KEY); if(raw) DB = JSON.parse(raw); }catch(e2){ /* fresh start */ }
+  }
+  ensureDefaults();
+  loaded = true;
+  await saveDB();
+}
+async function saveDB(){
+  try{
+    await idbSet(KEY, DB);
+  }catch(e){
+    idbAvailable = false;
+    try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
+    catch(e2){ console.error('storage error', e2); showToast('تعذر الحفظ — المساحة ممتلئة أو المتصفح لا يدعم التخزين'); }
+  }
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmt(n){ return (Math.round((n||0)*100)/100).toLocaleString('ar-EG'); }
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ---------- Navigation ----------
+const PAGES = [
+  {id:'dashboard', label:'الرئيسية', icon:'🏠'},
+  {id:'crushers', label:'الكسارات', icon:'🏭'},
+  {id:'inventory', label:'المخزون', icon:'⛰️'},
+  {id:'warehouses', label:'المخازن', icon:'🏬'},
+  {id:'assets', label:'الأصول الثابتة', icon:'🏗️'},
+  {id:'sales', label:'المبيعات', icon:'🧾'},
+  {id:'purchases', label:'المشتريات', icon:'📥'},
+  {id:'transport', label:'حركة النقل', icon:'🚚'},
+  {id:'fleet', label:'الأسطول والسائقين', icon:'🚛'},
+  {id:'finance', label:'الحسابات المالية', icon:'💰'},
+  {id:'vouchers', label:'سندات القبض والصرف', icon:'🧮'},
+  {id:'contacts', label:'العملاء والموردون', icon:'👥'},
+  {id:'backup', label:'النسخ الاحتياطي والتصدير', icon:'💾'},
+];
+let currentPage = 'dashboard';
+
+function renderNav(){
+  const nav = document.getElementById('navBar');
+  nav.innerHTML = PAGES.map(p=>`
+    <button class="nav-btn ${p.id===currentPage?'active':''}" data-page="${p.id}">
+      <span class="nav-icon">${p.icon}</span><span>${p.label}</span>
+    </button>`).join('');
+  nav.querySelectorAll('.nav-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{ currentPage=b.dataset.page; renderNav(); renderPage(); });
+  });
+}
+
+function renderPage(){
+  const main = document.getElementById('mainArea');
+  if(currentPage==='dashboard') main.innerHTML = pageDashboard();
+  else if(currentPage==='crushers') main.innerHTML = pageCrushers();
+  else if(currentPage==='inventory') main.innerHTML = pageInventory();
+  else if(currentPage==='warehouses') main.innerHTML = pageWarehouses();
+  else if(currentPage==='assets') main.innerHTML = pageAssets();
+  else if(currentPage==='sales') main.innerHTML = pageSales();
+  else if(currentPage==='purchases') main.innerHTML = pagePurchases();
+  else if(currentPage==='transport') main.innerHTML = pageTransport();
+  else if(currentPage==='fleet') main.innerHTML = pageFleet();
+  else if(currentPage==='finance') main.innerHTML = pageFinance();
+  else if(currentPage==='vouchers') main.innerHTML = pageVouchers();
+  else if(currentPage==='contacts') main.innerHTML = pageContacts();
+  else if(currentPage==='backup') main.innerHTML = pageBackup();
+  injectToolbar();
+  attachHandlers();
+  attachAttachButtons();
+}
+
+function injectToolbar(){
+  const titleBlock = document.querySelector('.page-title');
+  if(!titleBlock) return;
+  const bar = document.createElement('div');
+  bar.className = 'toolbar';
+  bar.innerHTML = `
+    <button class="btn secondary" id="btnPrintPage">🖨️ طباعة</button>
+    <button class="btn secondary" id="btnExportExcel">📊 تصدير Excel</button>`;
+  titleBlock.appendChild(bar);
+  document.getElementById('btnPrintPage').addEventListener('click', ()=> window.print());
+  document.getElementById('btnExportExcel').addEventListener('click', exportCurrentPageExcel);
+}
+
+function exportCurrentPageExcel(){
+  if(typeof XLSX==='undefined'){ showToast('تعذر تحميل مكتبة Excel — تأكد من الاتصال بالإنترنت'); return; }
+  const tables = document.querySelectorAll('#mainArea table');
+  if(tables.length===0){ showToast('لا توجد بيانات لتصديرها في هذه الصفحة'); return; }
+  const wb = XLSX.utils.book_new();
+  tables.forEach((table, i)=>{
+    let sheetName = 'بيانات'+(i+1);
+    let el = table.closest('.panel');
+    const h3 = el ? el.querySelector('h3') : null;
+    if(h3) sheetName = h3.textContent.trim().replace(/[\\/*?:\[\]]/g,'').slice(0,28) || sheetName;
+    const ws = XLSX.utils.table_to_sheet(table);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+  const pageLabel = (PAGES.find(p=>p.id===currentPage)||{}).label || 'بيانات';
+  XLSX.writeFile(wb, `${pageLabel}.xlsx`);
+  showToast('تم تصدير الملف');
+}
+
+// ---------- Calculations ----------
+function stockValue(){
+  return DB.products.reduce((s,p)=> s + (p.qty * p.cost), 0);
+}
+function totalSales(){ return DB.sales.reduce((s,x)=>s+x.total,0); }
+function totalPurchases(){ return DB.purchases.reduce((s,x)=>s+x.total,0); }
+function totalTransportCost(){ return DB.transport.reduce((s,x)=>s+(x.cost||0),0); }
+function totalExpenses(){ return DB.expenses.reduce((s,x)=>s+x.amount,0); }
+function totalProductionCost(){ return DB.production.reduce((s,x)=>s+(x.cost||0),0); }
+function totalVehicleExpenses(){ return DB.vehicleExpenses.reduce((s,x)=>s+(x.amount||0),0); }
+function totalDepreciation(){ return DB.assets.reduce((s,a)=>s+assetAccumDep(a),0); }
+function receivables(){ return DB.sales.reduce((s,x)=>s+(x.total-x.paid),0); }
+function payables(){ return DB.purchases.reduce((s,x)=>s+(x.total-x.paid),0); }
+function netProfit(){
+  return totalSales() - totalPurchases() - totalTransportCost() - totalExpenses() - totalProductionCost() - totalVehicleExpenses() - totalDepreciation();
+}
+function customerName(id){ const c=DB.customers.find(x=>x.id===id); return c?c.name:'—'; }
+function supplierName(id){ const s=DB.suppliers.find(x=>x.id===id); return s?s.name:'—'; }
+function productName(id){ const p=DB.products.find(x=>x.id===id); return p?p.name:'—'; }
+function productUnit(id){ const p=DB.products.find(x=>x.id===id); return p?p.unit:''; }
+function crusherName(id){ const c=DB.crushers.find(x=>x.id===id); return c?c.name:'—'; }
+function vehicleLabel(id){ const v=DB.vehicles.find(x=>x.id===id); return v?(v.plateNo+(v.type?' - '+v.type:'')):'—'; }
+function driverRegName(id){ const d=DB.drivers.find(x=>x.id===id); return d?d.name:'—'; }
+function warehouseName(id){ const w=DB.warehouses.find(x=>x.id===id); return w?w.name:'—'; }
+function mainWarehouseId(){ return DB.warehouses.length? DB.warehouses[0].id : null; }
+function stockQty(productId, warehouseId){
+  const s = DB.stock.find(x=>x.productId===productId && x.warehouseId===warehouseId);
+  return s ? s.qty : 0;
+}
+function addStock(productId, warehouseId, qty){
+  if(!warehouseId) warehouseId = mainWarehouseId();
+  let s = DB.stock.find(x=>x.productId===productId && x.warehouseId===warehouseId);
+  if(!s){ s = { id:uid(), productId, warehouseId, qty:0 }; DB.stock.push(s); }
+  s.qty += qty;
+}
+function removeStock(productId, warehouseId, qty){ addStock(productId, warehouseId, -qty); }
+
+// ---------- Fixed assets: depreciation (straight-line) ----------
+function assetAnnualDep(a){
+  const life = a.usefulLife || 1;
+  return (a.cost - (a.salvage||0)) / life;
+}
+function assetAccumDep(a){
+  const start = new Date(a.purchaseDate);
+  const now = new Date();
+  let months = (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth());
+  if(months < 0) months = 0;
+  const monthly = assetAnnualDep(a) / 12;
+  let accum = monthly * months;
+  const max = a.cost - (a.salvage||0);
+  if(accum > max) accum = max;
+  if(accum < 0) accum = 0;
+  return accum;
+}
+function assetBookValue(a){ return a.cost - assetAccumDep(a); }
+function totalAssetsBookValue(){ return DB.assets.reduce((s,a)=>s+assetBookValue(a),0); }
+
+// ---------- Dashboard ----------
+function pageDashboard(){
+  const recentTransport = [...DB.transport].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,5);
+  return `
+    <div class="page-title">
+      <div><h2>نظرة عامة</h2><p>ملخص حالة النشاط اليوم</p></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi clay"><div class="label">قيمة المخزون الحالي</div><div class="value">${fmt(stockValue())}</div><div class="sub">جنيه</div></div>
+      <div class="kpi moss"><div class="label">إجمالي المبيعات</div><div class="value">${fmt(totalSales())}</div><div class="sub">جنيه</div></div>
+      <div class="kpi"><div class="label">إجمالي المشتريات</div><div class="value">${fmt(totalPurchases())}</div><div class="sub">جنيه</div></div>
+      <div class="kpi ${netProfit()>=0?'moss':'danger'}"><div class="label">صافي الربح التقديري</div><div class="value">${fmt(netProfit())}</div><div class="sub">مبيعات − (مشتريات + نقل + تشغيل كسارات + مصروفات + إهلاك أصول)</div></div>
+      <div class="kpi danger"><div class="label">مستحقات على العملاء</div><div class="value">${fmt(receivables())}</div><div class="sub">لم تُحصَّل بعد</div></div>
+      <div class="kpi"><div class="label">مستحقات للموردين</div><div class="value">${fmt(payables())}</div><div class="sub">لم تُسدَّد بعد</div></div>
+      <div class="kpi moss"><div class="label">صافي القيمة الدفترية للأصول الثابتة</div><div class="value">${fmt(totalAssetsBookValue())}</div><div class="sub">بعد خصم الإهلاك</div></div>
+    </div>
+    <div class="panel">
+      <h3>آخر رحلات النقل</h3>
+      ${recentTransport.length? `
+      <table><thead><tr><th>التاريخ</th><th>السائق</th><th>من</th><th>إلى</th><th>الصنف</th><th>تكلفة النقل</th><th>ربح الرحلة</th></tr></thead>
+      <tbody>${recentTransport.map(t=>`
+        <tr><td>${t.date}</td><td>${t.driver||'—'}</td><td>${t.from||'—'}</td><td>${t.to||'—'}</td><td>${t.productId?productName(t.productId):'—'}</td><td>${fmt(t.cost)}</td><td style="color:${(t.profit||0)>=0?'var(--moss-600)':'var(--danger)'}">${fmt(t.profit)}</td></tr>
+      `).join('')}</tbody></table>` : `<div class="empty-state"><div class="icon">🚚</div><p>لا توجد رحلات نقل مسجلة بعد</p></div>`}
+    </div>`;
+}
+
+// ---------- Crushers ----------
+function pageCrushers(){
+  return `
+    <div class="page-title">
+      <div><h2>الكسارات</h2><p>وحدات إنتاج البحص/الرمل/الزلط بطاقتها اليومية وتكلفة تشغيلها</p></div>
+      <button class="btn" id="btnAddCrusher">+ إضافة كسارة</button>
+    </div>
+    <div class="panel" id="crusherFormPanel" style="display:none;">
+      <h3>كسارة جديدة</h3>
+      <form id="crusherForm">
+        <div class="form-grid">
+          <div><label>اسم الكسارة</label><input name="name" required></div>
+          <div><label>الموقع</label><input name="location"></div>
+          <div><label>الطاقة التشغيلية اليومية</label><input type="number" step="any" name="dailyCapacity" required></div>
+          <div><label>الوحدة</label><select name="unit"><option value="متر مكعب">متر مكعب</option><option value="طن">طن</option></select></div>
+          <div><label>تكلفة التشغيل اليومية</label><input type="number" step="any" name="operatingCost" required></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelCrusher">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>الكسارة</th><th>الموقع</th><th>الطاقة اليومية</th><th>تكلفة التشغيل اليومية</th><th></th></tr></thead>
+        <tbody>
+        ${DB.crushers.length? DB.crushers.map(c=>`
+          <tr><td>${c.name}</td><td>${c.location||'—'}</td><td>${fmt(c.dailyCapacity)} ${c.unit}</td><td>${fmt(c.operatingCost)}</td>
+          <td><button class="tag-attach" data-attach="crusher:${c.id}">📎${attachBadge(c)}</button><button class="tag-del" data-del-crusher="${c.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="5">لا توجد كسارات مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel" id="productionFormPanel" style="display:none;">
+      <h3>تسجيل إنتاج يومي</h3>
+      <form id="productionForm">
+        <div class="form-grid">
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>الكسارة</label><select name="crusherId" required onchange="window.__fillCost(this,'prodCost')">
+            <option value="">اختر كسارة</option>
+            ${DB.crushers.map(c=>`<option value="${c.id}" data-cost="${c.operatingCost}">${c.name}</option>`).join('')}
+          </select></div>
+          <div><label>الصنف المنتَج</label><select name="productName" required>
+            <option value="">اختر أو اكتب صنف جديد</option>
+            ${DB.products.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')}
+          </select></div>
+          <div><label>أو اسم صنف جديد</label><input name="newProductName" placeholder="اتركه فارغاً إذا اخترت صنف موجود"></div>
+          <div><label>الوحدة</label><select name="unit"><option value="متر مكعب">متر مكعب</option><option value="طن">طن</option></select></div>
+          <div><label>الكمية المنتَجة</label><input type="number" step="any" name="qty" required></div>
+          <div><label>تكلفة التشغيل لهذا اليوم</label><input type="number" step="any" name="cost" id="prodCost" required></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ الإنتاج</button><button class="btn secondary" type="button" id="cancelProduction">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <h3>سجل الإنتاج ${DB.crushers.length? `<button class="btn" style="margin-right:14px; padding:6px 14px; font-size:12.5px;" id="btnAddProduction">+ تسجيل إنتاج</button>` : ''}</h3>
+      ${DB.crushers.length===0? `<div class="empty-state"><div class="icon">🏭</div><p>أضف كسارة أولاً قبل تسجيل الإنتاج</p></div>` : `
+      <table>
+        <thead><tr><th>التاريخ</th><th>الكسارة</th><th>الصنف</th><th>الكمية المنتَجة</th><th>تكلفة التشغيل</th><th></th></tr></thead>
+        <tbody>
+        ${DB.production.length? [...DB.production].sort((a,b)=>b.date.localeCompare(a.date)).map(pr=>`
+          <tr><td>${pr.date}</td><td>${crusherName(pr.crusherId)}</td><td>${productName(pr.productId)}</td><td>${fmt(pr.qty)}</td><td>${fmt(pr.cost)}</td>
+          <td><button class="tag-attach" data-attach="production:${pr.id}">📎${attachBadge(pr)}</button><button class="tag-del" data-del-production="${pr.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="6">لا يوجد إنتاج مسجل بعد</td></tr>`}
+        </tbody>
+      </table>`}
+    </div>`;
+}
+
+// ---------- Inventory ----------
+function pageInventory(){
+  return `
+    <div class="page-title">
+      <div><h2>المخزون</h2><p>أنواع البحص والرمل والزلط والكميات المتاحة</p></div>
+      <button class="btn" id="btnAddProduct">+ إضافة صنف</button>
+    </div>
+    <div class="panel" id="productFormPanel" style="display:none;">
+      <h3>صنف جديد</h3>
+      <form id="productForm">
+        <div class="form-grid">
+          <div><label>اسم الصنف (مثال: بحص مقاس 1)</label><input name="name" required></div>
+          <div><label>الوحدة</label><select name="unit"><option value="متر مكعب">متر مكعب</option><option value="طن">طن</option><option value="لودر">لودر</option></select></div>
+          <div><label>الكمية الحالية</label><input type="number" step="any" name="qty" required></div>
+          <div><label>سعر التكلفة للوحدة</label><input type="number" step="any" name="cost" required></div>
+          <div><label>سعر البيع للوحدة</label><input type="number" step="any" name="price" required></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelProduct">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>الصنف</th><th>الوحدة</th><th>الكمية المتاحة</th><th>تكلفة الوحدة</th><th>سعر البيع</th><th>قيمة المخزون</th><th>توزيع المخازن</th><th></th></tr></thead>
+        <tbody>
+        ${DB.products.length? DB.products.map(p=>`
+          <tr><td>${p.name}</td><td>${p.unit}</td><td>${fmt(p.qty)}</td><td>${fmt(p.cost)}</td><td>${fmt(p.price)}</td><td>${fmt(p.qty*p.cost)}</td>
+          <td style="white-space:normal; font-size:12px; color:var(--stone-700);">${DB.warehouses.map(w=>{const q=stockQty(p.id,w.id); return q? `${w.name}: ${fmt(q)}` : null;}).filter(Boolean).join('، ') || '—'}</td>
+          <td><button class="tag-attach" data-attach="product:${p.id}">📎${attachBadge(p)}</button><button class="tag-del" data-del-product="${p.id}" title="حذف">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="8">لا توجد أصناف بعد — أضف أول صنف للبدء</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Warehouses ----------
+function pageWarehouses(){
+  return `
+    <div class="page-title">
+      <div><h2>المخازن</h2><p>إدارة مواقع التخزين المتعددة ونقل الأصناف بينها</p></div>
+      <button class="btn" id="btnAddWarehouse">+ إضافة مخزن</button>
+    </div>
+    <div class="panel" id="warehouseFormPanel" style="display:none;">
+      <h3>مخزن جديد</h3>
+      <form id="warehouseForm">
+        <div class="form-grid">
+          <div><label>اسم المخزن</label><input name="name" required></div>
+          <div><label>الموقع</label><input name="location"></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelWarehouse">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>المخزن</th><th>الموقع</th><th>عدد الأصناف المخزَّنة</th><th>القيمة التقديرية</th><th></th></tr></thead>
+        <tbody>
+        ${DB.warehouses.map(w=>{
+          const rows = DB.stock.filter(s=>s.warehouseId===w.id && s.qty>0);
+          const value = rows.reduce((a,s)=>{ const p=DB.products.find(x=>x.id===s.productId); return a + (p? s.qty*p.cost : 0); },0);
+          return `<tr><td>${w.name}</td><td>${w.location||'—'}</td><td>${rows.length}</td><td>${fmt(value)}</td>
+          <td>${DB.warehouses.length>1? `<button class="tag-del" data-del-warehouse="${w.id}">🗑️</button>` : ''}</td></tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel" ${DB.products.length===0||DB.warehouses.length<2? 'style="opacity:.6;"':''}>
+      <h3>تحويل مخزني بين المخازن</h3>
+      ${DB.warehouses.length<2? `<p style="font-size:13px; color:var(--stone-700);">أضف أكثر من مخزن واحد لتتمكن من التحويل بينها.</p>` : `
+      <form id="transferForm" class="form-grid" style="align-items:end;">
+        <div><label>الصنف</label><select name="productId" required>
+          <option value="">اختر صنف</option>
+          ${DB.products.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+        </select></div>
+        <div><label>من مخزن</label><select name="fromWarehouseId" required>${DB.warehouses.map(w=>`<option value="${w.id}">${w.name}</option>`).join('')}</select></div>
+        <div><label>إلى مخزن</label><select name="toWarehouseId" required>${DB.warehouses.map(w=>`<option value="${w.id}">${w.name}</option>`).join('')}</select></div>
+        <div><label>الكمية</label><input type="number" step="any" name="qty" required></div>
+        <div><button class="btn" type="submit">تنفيذ التحويل</button></div>
+      </form>`}
+    </div>
+    <div class="panel">
+      <h3>سجل التحويلات</h3>
+      <table>
+        <thead><tr><th>التاريخ</th><th>الصنف</th><th>من</th><th>إلى</th><th>الكمية</th><th></th></tr></thead>
+        <tbody>
+        ${DB.transfers.length? [...DB.transfers].sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`
+          <tr><td>${t.date}</td><td>${productName(t.productId)}</td><td>${warehouseName(t.fromWarehouseId)}</td><td>${warehouseName(t.toWarehouseId)}</td><td>${fmt(t.qty)}</td>
+          <td><button class="tag-del" data-del-transfer="${t.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="6">لا توجد تحويلات مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Fixed Assets ----------
+function pageAssets(){
+  return `
+    <div class="page-title">
+      <div><h2>الأصول الثابتة</h2><p>المعدات والآلات والمباني، مع احتساب الإهلاك السنوي والقيمة الدفترية تلقائياً</p></div>
+      <button class="btn" id="btnAddAsset">+ إضافة أصل</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi clay"><div class="label">إجمالي تكلفة الأصول</div><div class="value">${fmt(DB.assets.reduce((s,a)=>s+a.cost,0))}</div></div>
+      <div class="kpi"><div class="label">إجمالي الإهلاك المتراكم</div><div class="value">${fmt(DB.assets.reduce((s,a)=>s+assetAccumDep(a),0))}</div></div>
+      <div class="kpi moss"><div class="label">صافي القيمة الدفترية</div><div class="value">${fmt(totalAssetsBookValue())}</div></div>
+    </div>
+    <div class="panel" id="assetFormPanel" style="display:none;">
+      <h3>أصل ثابت جديد</h3>
+      <form id="assetForm">
+        <div class="form-grid">
+          <div><label>اسم الأصل</label><input name="name" required placeholder="مثال: كسارة حجر، شاحنة قلاب"></div>
+          <div><label>الفئة</label><select name="category">
+            <option value="معدات">معدات</option><option value="مركبات">مركبات</option><option value="مباني">مباني</option><option value="أثاث ومكاتب">أثاث ومكاتب</option><option value="أخرى">أخرى</option>
+          </select></div>
+          <div><label>تاريخ الشراء</label><input type="date" name="purchaseDate" value="${todayStr()}" required></div>
+          <div><label>تكلفة الشراء</label><input type="number" step="any" name="cost" required></div>
+          <div><label>العمر الافتراضي (سنوات)</label><input type="number" step="any" name="usefulLife" value="5" required></div>
+          <div><label>القيمة التخريدية (نهاية العمر)</label><input type="number" step="any" name="salvage" value="0"></div>
+          <div><label>الموقع / الجهة المسؤولة</label><input name="location"></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelAsset">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>الأصل</th><th>الفئة</th><th>تاريخ الشراء</th><th>التكلفة</th><th>العمر (سنوات)</th><th>الإهلاك السنوي</th><th>الإهلاك المتراكم</th><th>القيمة الدفترية</th><th></th></tr></thead>
+        <tbody>
+        ${DB.assets.length? [...DB.assets].sort((a,b)=>b.purchaseDate.localeCompare(a.purchaseDate)).map(a=>`
+          <tr><td>${a.name}</td><td>${a.category}</td><td>${a.purchaseDate}</td><td>${fmt(a.cost)}</td><td>${fmt(a.usefulLife)}</td>
+          <td>${fmt(assetAnnualDep(a))}</td><td>${fmt(assetAccumDep(a))}</td><td style="font-weight:700;">${fmt(assetBookValue(a))}</td>
+          <td><button class="tag-attach" data-attach="asset:${a.id}">📎${attachBadge(a)}</button><button class="tag-del" data-del-asset="${a.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="9">لا توجد أصول ثابتة مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Sales ----------
+function pageSales(){
+  return `
+    <div class="page-title">
+      <div><h2>المبيعات والفواتير</h2><p>تسجيل فواتير البيع للعملاء</p></div>
+      <button class="btn" id="btnAddSale" ${DB.products.length===0?'disabled title="أضف أصناف مخزون أولاً"':''}>+ فاتورة بيع</button>
+    </div>
+    ${DB.products.length===0? `<div class="empty-state"><div class="icon">⛰️</div><p>أضف أصنافاً في المخزون أولاً قبل تسجيل مبيعات</p></div>` : ''}
+    <div class="panel" id="saleFormPanel" style="display:none;">
+      <h3>فاتورة بيع جديدة</h3>
+      <form id="saleForm">
+        <div class="form-grid">
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>العميل</label><select name="customerId" required>
+            <option value="">اختر عميل</option>
+            ${DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+          </select></div>
+          <div><label>الصنف</label><select name="productId" required onchange="window.__fillPrice(this,'salePrice')">
+            <option value="">اختر صنف</option>
+            ${DB.products.map(p=>`<option value="${p.id}" data-price="${p.price}">${p.name} (متاح ${fmt(p.qty)})</option>`).join('')}
+          </select></div>
+          <div><label>الكمية</label><input type="number" step="any" name="qty" required></div>
+          <div><label>سعر البيع للوحدة</label><input type="number" step="any" name="price" id="salePrice" required></div>
+          <div><label>المدفوع الآن</label><input type="number" step="any" name="paid" value="0"></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ الفاتورة</button><button class="btn secondary" type="button" id="cancelSale">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>التاريخ</th><th>العميل</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+        ${DB.sales.length? [...DB.sales].sort((a,b)=>b.date.localeCompare(a.date)).map(s=>`
+          <tr><td>${s.date}</td><td>${customerName(s.customerId)}</td><td>${productName(s.productId)}</td><td>${fmt(s.qty)}</td><td>${fmt(s.price)}</td><td>${fmt(s.total)}</td><td>${fmt(s.paid)}</td>
+          <td>${statusPill(s.total,s.paid)}</td><td><button class="tag-attach" data-attach="sale:${s.id}">📎${attachBadge(s)}</button><button class="tag-del" data-del-sale="${s.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="9">لا توجد فواتير بيع بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+function statusPill(total,paid){
+  if(paid>=total) return `<span class="pill paid">مدفوعة</span>`;
+  if(paid<=0) return `<span class="pill unpaid">غير مدفوعة</span>`;
+  return `<span class="pill partial">جزئي</span>`;
+}
+
+// ---------- Purchases ----------
+function pagePurchases(){
+  return `
+    <div class="page-title">
+      <div><h2>المشتريات</h2><p>تسجيل مشتريات من الموردين وإضافتها للمخزون</p></div>
+      <button class="btn" id="btnAddPurchase" ${DB.suppliers.length===0?'disabled title="أضف موردين أولاً"':''}>+ فاتورة شراء</button>
+    </div>
+    ${DB.suppliers.length===0? `<div class="empty-state"><div class="icon">👥</div><p>أضف مورداً واحداً على الأقل من صفحة "العملاء والموردون"</p></div>` : ''}
+    <div class="panel" id="purchaseFormPanel" style="display:none;">
+      <h3>فاتورة شراء جديدة</h3>
+      <form id="purchaseForm">
+        <div class="form-grid">
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>المورد</label><select name="supplierId" required>
+            <option value="">اختر مورد</option>
+            ${DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select></div>
+          <div><label>الصنف</label><select name="productName" required>
+            <option value="">اختر أو اكتب صنف جديد</option>
+            ${DB.products.map(p=>`<option value="${p.name}">${p.name}</option>`).join('')}
+          </select></div>
+          <div><label>أو اسم صنف جديد</label><input name="newProductName" placeholder="اتركه فارغاً إذا اخترت صنف موجود"></div>
+          <div><label>الوحدة</label><select name="unit"><option value="متر مكعب">متر مكعب</option><option value="طن">طن</option><option value="لودر">لودر</option></select></div>
+          <div><label>الكمية</label><input type="number" step="any" name="qty" required></div>
+          <div><label>سعر الشراء للوحدة</label><input type="number" step="any" name="price" required></div>
+          <div><label>المدفوع الآن</label><input type="number" step="any" name="paid" value="0"></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ الفاتورة</button><button class="btn secondary" type="button" id="cancelPurchase">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>التاريخ</th><th>المورد</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th><th></th></tr></thead>
+        <tbody>
+        ${DB.purchases.length? [...DB.purchases].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>`
+          <tr><td>${p.date}</td><td>${supplierName(p.supplierId)}</td><td>${productName(p.productId)}</td><td>${fmt(p.qty)}</td><td>${fmt(p.price)}</td><td>${fmt(p.total)}</td><td>${fmt(p.paid)}</td>
+          <td>${statusPill(p.total,p.paid)}</td><td><button class="tag-attach" data-attach="purchase:${p.id}">📎${attachBadge(p)}</button><button class="tag-del" data-del-purchase="${p.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="9">لا توجد فواتير شراء بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Transport ----------
+function pageTransport(){
+  return `
+    <div class="page-title">
+      <div><h2>حركة النقل</h2><p>شيت رحلة متكامل: نقل + شراء من المورد + بيع للعميل في نفس الرحلة</p></div>
+      <button class="btn" id="btnAddTransport">+ رحلة جديدة</button>
+    </div>
+    <div class="panel" id="transportFormPanel" style="display:none;">
+      <h3>شيت رحلة جديدة</h3>
+      <form id="transportForm">
+        <div class="form-grid">
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>السيارة (من السجل)</label><select name="vehicleId" onchange="window.__fillVehicleDriver(this)">
+            <option value="">— اختر أو اكتب يدوياً —</option>
+            ${DB.vehicles.map(v=>`<option value="${v.id}" data-plate="${v.plateNo}">${v.plateNo}${v.type?' - '+v.type:''}</option>`).join('')}
+          </select></div>
+          <div><label>السائق (من السجل)</label><select name="driverId" onchange="window.__fillVehicleDriver(this)">
+            <option value="">— اختر أو اكتب يدوياً —</option>
+            ${DB.drivers.map(d=>`<option value="${d.id}" data-name="${d.name}">${d.name}</option>`).join('')}
+          </select></div>
+          <div><label>اسم السائق (نصي)</label><input name="driver"></div>
+          <div><label>رقم السيارة/اللودر (نصي)</label><input name="truckNo"></div>
+          <div><label>من (نقطة التحميل)</label><input name="from"></div>
+          <div><label>إلى (نقطة التسليم)</label><input name="to"></div>
+          <div><label>الصنف المنقول</label><select name="productId" onchange="window.__fillTripPrices(this)">
+            <option value="">— بدون تحديد —</option>
+            ${DB.products.map(p=>`<option value="${p.id}" data-cost="${p.cost}" data-price="${p.price}">${p.name} (متاح ${fmt(p.qty)})</option>`).join('')}
+          </select></div>
+          <div><label>تكلفة النقل</label><input type="number" step="any" name="cost" required></div>
+        </div>
+
+        <h3 style="margin-top:6px; font-size:14.5px; color:var(--clay-700);">جانب الشراء (من المورد) — اختياري</h3>
+        <div class="form-grid">
+          <div><label>المورد</label><select name="supplierId">
+            <option value="">— بدون —</option>
+            ${DB.suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select></div>
+          <div><label>كمية الشراء</label><input type="number" step="any" name="purchaseQty" oninput="window.__calcTripValue(this.form,'purchase')"></div>
+          <div><label>سعر الشراء للوحدة</label><input type="number" step="any" name="purchasePrice" id="tripPurchasePrice" oninput="window.__calcTripValue(this.form,'purchase')"></div>
+          <div><label>قيمة الشراء</label><input type="number" step="any" name="purchaseValue" id="tripPurchaseValue" readonly style="background:var(--sand-50);"></div>
+        </div>
+
+        <h3 style="margin-top:6px; font-size:14.5px; color:var(--moss-600);">جانب البيع (للعميل) — اختياري</h3>
+        <div class="form-grid">
+          <div><label>العميل</label><select name="customerId">
+            <option value="">— بدون —</option>
+            ${DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+          </select></div>
+          <div><label>كمية البيع</label><input type="number" step="any" name="saleQty" oninput="window.__calcTripValue(this.form,'sale')"></div>
+          <div><label>سعر البيع للوحدة</label><input type="number" step="any" name="salePrice" id="tripSalePrice" oninput="window.__calcTripValue(this.form,'sale')"></div>
+          <div><label>قيمة البيع</label><input type="number" step="any" name="saleValue" id="tripSaleValue" readonly style="background:var(--sand-50);"></div>
+        </div>
+
+        <div class="actions-row"><button class="btn" type="submit">حفظ الرحلة</button><button class="btn secondary" type="button" id="cancelTransport">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>التاريخ</th><th>السائق</th><th>السيارة</th><th>من</th><th>إلى</th><th>الصنف</th>
+        <th>المورد</th><th>كمية الشراء</th><th>سعر الشراء</th><th>قيمة الشراء</th>
+        <th>العميل</th><th>كمية البيع</th><th>سعر البيع</th><th>قيمة البيع</th>
+        <th>تكلفة النقل</th><th>ربح الرحلة</th><th></th></tr></thead>
+        <tbody>
+        ${DB.transport.length? [...DB.transport].sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`
+          <tr>
+            <td>${t.date}</td><td>${t.driver||'—'}</td><td>${t.truckNo||'—'}</td><td>${t.from||'—'}</td><td>${t.to||'—'}</td><td>${t.productId?productName(t.productId):'—'}</td>
+            <td>${t.supplierId?supplierName(t.supplierId):'—'}</td><td>${t.purchaseQty?fmt(t.purchaseQty):'—'}</td><td>${t.purchasePrice?fmt(t.purchasePrice):'—'}</td><td>${t.purchaseValue?fmt(t.purchaseValue):'—'}</td>
+            <td>${t.customerId?customerName(t.customerId):'—'}</td><td>${t.saleQty?fmt(t.saleQty):'—'}</td><td>${t.salePrice?fmt(t.salePrice):'—'}</td><td>${t.saleValue?fmt(t.saleValue):'—'}</td>
+            <td>${fmt(t.cost)}</td><td style="font-weight:700; color:${(t.profit||0)>=0?'var(--moss-600)':'var(--danger)'}">${fmt(t.profit)}</td>
+            <td><button class="tag-attach" data-attach="transport:${t.id}">📎${attachBadge(t)}</button><button class="tag-del" data-del-transport="${t.id}">🗑️</button></td>
+          </tr>
+        `).join('') : `<tr class="empty-row"><td colspan="17">لا توجد رحلات نقل مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Fleet (Vehicles, Drivers, Expenses, Profitability) ----------
+function pageFleet(){
+  return `
+    <div class="page-title">
+      <div><h2>الأسطول والسائقين</h2><p>سجل السيارات والسائقين، مصاريف الوقود والصيانة، وتقرير ربحية كل عربة</p></div>
+    </div>
+
+    <div class="panel">
+      <h3>السيارات / اللودرات <button class="btn" style="margin-right:12px; padding:6px 14px; font-size:12.5px;" id="btnAddVehicle">+ إضافة سيارة</button></h3>
+      <div id="vehicleFormPanel" style="display:none; margin-top:12px;">
+        <form id="vehicleForm">
+          <div class="form-grid">
+            <div><label>رقم اللوحة</label><input name="plateNo" required></div>
+            <div><label>النوع</label><select name="type"><option value="قلاب">قلاب</option><option value="لودر">لودر</option><option value="نقل ثقيل">نقل ثقيل</option><option value="أخرى">أخرى</option></select></div>
+            <div><label>الملكية</label><select name="owner"><option value="ملك">ملك</option><option value="إيجار">إيجار</option></select></div>
+            <div><label>ملاحظات</label><input name="notes"></div>
+          </div>
+          <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelVehicle">إلغاء</button></div>
+        </form>
+      </div>
+      <table>
+        <thead><tr><th>رقم اللوحة</th><th>النوع</th><th>الملكية</th><th>ملاحظات</th><th></th></tr></thead>
+        <tbody>
+        ${DB.vehicles.length? DB.vehicles.map(v=>`
+          <tr><td>${v.plateNo}</td><td>${v.type}</td><td>${v.owner}</td><td>${v.notes||'—'}</td><td><button class="tag-attach" data-attach="vehicle:${v.id}">📎${attachBadge(v)}</button><button class="tag-del" data-del-vehicle="${v.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="5">لا توجد سيارات مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>السائقون <button class="btn" style="margin-right:12px; padding:6px 14px; font-size:12.5px;" id="btnAddDriver">+ إضافة سائق</button></h3>
+      <div id="driverFormPanel" style="display:none; margin-top:12px;">
+        <form id="driverForm">
+          <div class="form-grid">
+            <div><label>اسم السائق</label><input name="name" required></div>
+            <div><label>رقم الهاتف</label><input name="phone"></div>
+            <div><label>رقم الرخصة</label><input name="licenseNo"></div>
+          </div>
+          <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelDriver">إلغاء</button></div>
+        </form>
+      </div>
+      <table>
+        <thead><tr><th>الاسم</th><th>الهاتف</th><th>رقم الرخصة</th><th></th></tr></thead>
+        <tbody>
+        ${DB.drivers.length? DB.drivers.map(d=>`
+          <tr><td>${d.name}</td><td>${d.phone||'—'}</td><td>${d.licenseNo||'—'}</td><td><button class="tag-attach" data-attach="driver:${d.id}">📎${attachBadge(d)}</button><button class="tag-del" data-del-driver="${d.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="4">لا يوجد سائقون مسجلون بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>مصاريف السيارات (وقود / صيانة) <button class="btn" style="margin-right:12px; padding:6px 14px; font-size:12.5px;" id="btnAddVehicleExpense" ${DB.vehicles.length===0?'disabled title="أضف سيارة أولاً"':''}>+ تسجيل مصروف</button></h3>
+      ${DB.vehicles.length===0? `<div class="empty-state"><div class="icon">🚛</div><p>أضف سيارة أولاً لتسجيل مصاريفها</p></div>` : `
+      <div id="vehicleExpenseFormPanel" style="display:none; margin-top:12px;">
+        <form id="vehicleExpenseForm">
+          <div class="form-grid">
+            <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+            <div><label>السيارة</label><select name="vehicleId" required>
+              <option value="">اختر سيارة</option>
+              ${DB.vehicles.map(v=>`<option value="${v.id}">${v.plateNo}${v.type?' - '+v.type:''}</option>`).join('')}
+            </select></div>
+            <div><label>نوع المصروف</label><select name="type"><option value="وقود">وقود</option><option value="صيانة">صيانة</option><option value="تأمين">تأمين</option><option value="أخرى">أخرى</option></select></div>
+            <div><label>المبلغ</label><input type="number" step="any" name="amount" required></div>
+            <div><label>ملاحظات</label><input name="notes"></div>
+          </div>
+          <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelVehicleExpense">إلغاء</button></div>
+        </form>
+      </div>
+      <table>
+        <thead><tr><th>التاريخ</th><th>السيارة</th><th>النوع</th><th>المبلغ</th><th>ملاحظات</th><th></th></tr></thead>
+        <tbody>
+        ${DB.vehicleExpenses.length? [...DB.vehicleExpenses].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+          <tr><td>${e.date}</td><td>${vehicleLabel(e.vehicleId)}</td><td>${e.type}</td><td>${fmt(e.amount)}</td><td>${e.notes||'—'}</td><td><button class="tag-attach" data-attach="vehicleExpense:${e.id}">📎${attachBadge(e)}</button><button class="tag-del" data-del-vehicle-expense="${e.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="6">لا توجد مصاريف مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="panel">
+      <h3>تقرير ربحية الأسطول</h3>
+      <form id="fleetReportForm" class="form-grid" style="align-items:end;">
+        <div><label>من تاريخ</label><input type="date" name="from"></div>
+        <div><label>إلى تاريخ</label><input type="date" name="to"></div>
+        <div><button class="btn" type="submit">عرض التقرير</button></div>
+      </form>
+      <div id="fleetReportResult">${fleetReportTable(null,null)}</div>
+    </div>`;
+}
+
+function fleetReportTable(from, to){
+  const trips = DB.transport.filter(t=>{
+    if(from && t.date < from) return false;
+    if(to && t.date > to) return false;
+    return true;
+  });
+  const byVehicle = {};
+  trips.forEach(t=>{
+    const key = t.vehicleId || ('نصي:'+(t.truckNo||'—'));
+    if(!byVehicle[key]) byVehicle[key] = { label: t.vehicleId?vehicleLabel(t.vehicleId):(t.truckNo||'غير محدد'), trips:0, profit:0, vehicleId:t.vehicleId };
+    byVehicle[key].trips += 1;
+    byVehicle[key].profit += (t.profit||0);
+  });
+  const vehExpByVehicle = {};
+  DB.vehicleExpenses.forEach(e=>{
+    if(from && e.date < from) return;
+    if(to && e.date > to) return;
+    vehExpByVehicle[e.vehicleId] = (vehExpByVehicle[e.vehicleId]||0) + e.amount;
+  });
+  const rows = Object.values(byVehicle);
+  if(rows.length===0) return `<div class="empty-state"><div class="icon">📊</div><p>لا توجد رحلات في هذه الفترة</p></div>`;
+  return `
+    <table>
+      <thead><tr><th>السيارة</th><th>عدد الرحلات</th><th>إجمالي ربح الرحلات</th><th>مصاريف الوقود/الصيانة</th><th>صافي الربح</th></tr></thead>
+      <tbody>
+      ${rows.map(r=>{
+        const exp = r.vehicleId ? (vehExpByVehicle[r.vehicleId]||0) : 0;
+        const net = r.profit - exp;
+        return `<tr><td>${r.label}</td><td>${r.trips}</td><td>${fmt(r.profit)}</td><td>${fmt(exp)}</td><td style="font-weight:700; color:${net>=0?'var(--moss-600)':'var(--danger)'}">${fmt(net)}</td></tr>`;
+      }).join('')}
+      </tbody>
+    </table>`;
+}
+function pageFinance(){
+  return `
+    <div class="page-title">
+      <div><h2>الحسابات المالية</h2><p>المصروفات العامة وملخص الأرباح</p></div>
+      <button class="btn" id="btnAddExpense">+ تسجيل مصروف</button>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi moss"><div class="label">إجمالي المبيعات</div><div class="value">${fmt(totalSales())}</div></div>
+      <div class="kpi"><div class="label">إجمالي المشتريات</div><div class="value">${fmt(totalPurchases())}</div></div>
+      <div class="kpi"><div class="label">إجمالي تكلفة النقل</div><div class="value">${fmt(totalTransportCost())}</div></div>
+      <div class="kpi"><div class="label">إجمالي تكلفة تشغيل الكسارات</div><div class="value">${fmt(totalProductionCost())}</div></div>
+      <div class="kpi"><div class="label">إجمالي مصاريف الأسطول (وقود/صيانة)</div><div class="value">${fmt(totalVehicleExpenses())}</div></div>
+      <div class="kpi"><div class="label">إجمالي المصروفات الأخرى</div><div class="value">${fmt(totalExpenses())}</div></div>
+      <div class="kpi"><div class="label">إهلاك الأصول الثابتة</div><div class="value">${fmt(totalDepreciation())}</div></div>
+      <div class="kpi ${netProfit()>=0?'moss':'danger'}"><div class="label">صافي الربح</div><div class="value">${fmt(netProfit())}</div></div>
+    </div>
+    <div class="panel" id="expenseFormPanel" style="display:none;">
+      <h3>مصروف جديد</h3>
+      <form id="expenseForm">
+        <div class="form-grid">
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>البيان</label><input name="desc" placeholder="مثال: صيانة لودر، إيجار، وقود" required></div>
+          <div><label>المبلغ</label><input type="number" step="any" name="amount" required></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ</button><button class="btn secondary" type="button" id="cancelExpense">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <h3>سجل المصروفات</h3>
+      <table>
+        <thead><tr><th>التاريخ</th><th>البيان</th><th>المبلغ</th><th></th></tr></thead>
+        <tbody>
+        ${DB.expenses.length? [...DB.expenses].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+          <tr><td>${e.date}</td><td>${e.desc}</td><td>${fmt(e.amount)}</td><td><button class="tag-attach" data-attach="expense:${e.id}">📎${attachBadge(e)}</button><button class="tag-del" data-del-expense="${e.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="4">لا توجد مصروفات مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Vouchers (Receipts & Payments) ----------
+function openInvoicesForVoucher(type, partyId){
+  if(type==='receipt'){
+    return DB.sales.filter(s=> (!partyId || s.customerId===partyId) && (s.total-s.paid) > 0.001);
+  } else {
+    return DB.purchases.filter(p=> (!partyId || p.supplierId===partyId) && (p.total-p.paid) > 0.001);
+  }
+}
+function pageVouchers(){
+  return `
+    <div class="page-title">
+      <div><h2>سندات القبض والصرف</h2><p>تسجيل الدفعات اللاحقة على فواتير البيع (قبض من عميل) أو فواتير الشراء (صرف لمورد)</p></div>
+      <button class="btn" id="btnAddVoucher" ${(DB.customers.length===0 && DB.suppliers.length===0)?'disabled':''}>+ سند جديد</button>
+    </div>
+    <div class="panel" id="voucherFormPanel" style="display:none;">
+      <h3>سند جديد</h3>
+      <form id="voucherForm">
+        <div class="form-grid">
+          <div><label>نوع السند</label><select name="type" id="voucherType" onchange="window.__fillVoucherInvoices(this.form)">
+            <option value="receipt">سند قبض (من عميل)</option>
+            <option value="payment">سند صرف (لمورد)</option>
+          </select></div>
+          <div><label>التاريخ</label><input type="date" name="date" value="${todayStr()}" required></div>
+          <div><label>الفاتورة المرتبطة</label><select name="invoiceId" id="voucherInvoiceId" required onchange="window.__fillVoucherAmount(this.form)"></select></div>
+          <div><label>المبلغ</label><input type="number" step="any" name="amount" id="voucherAmount" required></div>
+          <div><label>بيان / ملاحظات</label><input name="desc"></div>
+        </div>
+        <div class="actions-row"><button class="btn" type="submit">حفظ السند</button><button class="btn secondary" type="button" id="cancelVoucher">إلغاء</button></div>
+      </form>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>التاريخ</th><th>النوع</th><th>الطرف</th><th>الفاتورة</th><th>المبلغ</th><th>بيان</th><th></th></tr></thead>
+        <tbody>
+        ${DB.vouchers.length? [...DB.vouchers].sort((a,b)=>b.date.localeCompare(a.date)).map(v=>`
+          <tr><td>${v.date}</td><td>${v.type==='receipt'?'قبض':'صرف'}</td><td>${v.type==='receipt'?customerName(v.partyId):supplierName(v.partyId)}</td>
+          <td>${v.type==='receipt'? (v.invoiceId?('فاتورة بيع #'+v.invoiceId.slice(-5)):'—') : (v.invoiceId?('فاتورة شراء #'+v.invoiceId.slice(-5)):'—')}</td>
+          <td>${fmt(v.amount)}</td><td>${v.desc||'—'}</td>
+          <td><button class="tag-del" data-del-voucher="${v.id}">🗑️</button></td></tr>
+        `).join('') : `<tr class="empty-row"><td colspan="7">لا توجد سندات مسجلة بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Contacts ----------
+function pageContacts(){
+  return `
+    <div class="page-title">
+      <div><h2>العملاء والموردون</h2><p>إدارة بيانات العملاء والموردين وأرصدتهم</p></div>
+    </div>
+    <div class="panel">
+      <h3>العملاء</h3>
+      <form id="customerForm" class="form-grid" style="align-items:end;">
+        <div><label>اسم العميل</label><input name="name" required></div>
+        <div><label>رقم الهاتف</label><input name="phone"></div>
+        <div><button class="btn" type="submit">+ إضافة عميل</button></div>
+      </form>
+      <table>
+        <thead><tr><th>الاسم</th><th>الهاتف</th><th>إجمالي المشتريات منه</th><th>المستحق له</th><th></th></tr></thead>
+        <tbody>
+        ${DB.customers.length? DB.customers.map(c=>{
+          const s = DB.sales.filter(x=>x.customerId===c.id);
+          const total = s.reduce((a,x)=>a+x.total,0);
+          const due = s.reduce((a,x)=>a+(x.total-x.paid),0);
+          return `<tr><td>${c.name}</td><td>${c.phone||'—'}</td><td>${fmt(total)}</td><td>${fmt(due)}</td><td><button class="tag-attach" data-attach="customer:${c.id}">📎${attachBadge(c)}</button><button class="tag-del" data-del-customer="${c.id}">🗑️</button></td></tr>`;
+        }).join('') : `<tr class="empty-row"><td colspan="5">لا يوجد عملاء بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>الموردون</h3>
+      <form id="supplierForm" class="form-grid" style="align-items:end;">
+        <div><label>اسم المورد</label><input name="name" required></div>
+        <div><label>رقم الهاتف</label><input name="phone"></div>
+        <div><button class="btn" type="submit">+ إضافة مورد</button></div>
+      </form>
+      <table>
+        <thead><tr><th>الاسم</th><th>الهاتف</th><th>إجمالي المشتريات منه</th><th>المستحق عليه له</th><th></th></tr></thead>
+        <tbody>
+        ${DB.suppliers.length? DB.suppliers.map(s=>{
+          const p = DB.purchases.filter(x=>x.supplierId===s.id);
+          const total = p.reduce((a,x)=>a+x.total,0);
+          const due = p.reduce((a,x)=>a+(x.total-x.paid),0);
+          return `<tr><td>${s.name}</td><td>${s.phone||'—'}</td><td>${fmt(total)}</td><td>${fmt(due)}</td><td><button class="tag-del" data-del-supplier="${s.id}">🗑️</button></td></tr>`;
+        }).join('') : `<tr class="empty-row"><td colspan="5">لا يوجد موردون بعد</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- Backup / Export ----------
+function pageBackup(){
+  return `
+    <div class="page-title">
+      <div><h2>النسخ الاحتياطي والتصدير</h2><p>احفظ نسخة من كل بياناتك أو استوردها، وصدّر كل السجلات دفعة واحدة إلى إكسل</p></div>
+    </div>
+    <div class="panel">
+      <h3>نسخة احتياطية كاملة (JSON)</h3>
+      <p style="font-size:13px; color:var(--stone-700); margin-bottom:12px;">تحمّل ملفاً يحتوي كل بياناتك (العملاء، الموردون، المخزون، الفواتير، الأصول، المرفقات...) ليمكنك استعادتها لاحقاً أو نقلها لجهاز آخر.</p>
+      <div class="actions-row">
+        <button class="btn" id="btnBackupDownload">💾 تنزيل نسخة احتياطية</button>
+        <button class="btn secondary" id="btnBackupRestoreTrigger">⬆️ استيراد نسخة احتياطية</button>
+        <input type="file" id="backupRestoreInput" accept="application/json" style="display:none;">
+      </div>
+    </div>
+    <div class="panel">
+      <h3>تصدير شامل إلى Excel</h3>
+      <p style="font-size:13px; color:var(--stone-700); margin-bottom:12px;">ملف إكسل واحد يحتوي كل الجداول (كل صفحة/ورقة لسجل مختلف)، مناسب للمحاسب أو للأرشفة.</p>
+      <button class="btn" id="btnExportAllExcel">📦 تصدير كل البيانات (Excel)</button>
+    </div>
+    <div class="panel">
+      <h3>ملاحظات</h3>
+      <p style="font-size:13px; color:var(--stone-700); line-height:1.9;">
+      • البيانات تُحفظ محلياً على هذا الجهاز/المتصفح فقط (لا يوجد خادم مركزي)، لذا خذ نسخة احتياطية بشكل دوري.<br>
+      • عند استيراد نسخة احتياطية، سيتم استبدال كل البيانات الحالية بالكامل.<br>
+      • المرفقات (الصور وملفات PDF) تُحفظ ضمن نفس النسخة الاحتياطية.</p>
+    </div>`;
+}
+function downloadBackup(){
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `نسخة-احتياطية-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('تم تنزيل النسخة الاحتياطية');
+}
+async function restoreBackup(file){
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if(typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('bad-format');
+    DB = parsed;
+    ensureDefaults();
+    await saveDB();
+    showToast('تم استيراد النسخة الاحتياطية بنجاح');
+    renderPage();
+  }catch(e){
+    showToast('تعذر قراءة الملف — تأكد أنه نسخة احتياطية صحيحة');
+  }
+}
+function exportAllExcel(){
+  if(typeof XLSX==='undefined'){ showToast('تعذر تحميل مكتبة Excel — تأكد من الاتصال بالإنترنت'); return; }
+  const wb = XLSX.utils.book_new();
+  const sheets = [
+    ['العملاء', DB.customers],
+    ['الموردون', DB.suppliers],
+    ['المخزون', DB.products],
+    ['المخازن', DB.warehouses],
+    ['توزيع_المخزون', DB.stock.map(s=>({الصنف:productName(s.productId), المخزن:warehouseName(s.warehouseId), الكمية:s.qty}))],
+    ['المبيعات', DB.sales.map(s=>({...s, العميل:customerName(s.customerId), الصنف:productName(s.productId)}))],
+    ['المشتريات', DB.purchases.map(p=>({...p, المورد:supplierName(p.supplierId), الصنف:productName(p.productId)}))],
+    ['حركة_النقل', DB.transport],
+    ['المصروفات', DB.expenses],
+    ['الكسارات', DB.crushers],
+    ['الإنتاج', DB.production],
+    ['الأسطول', DB.vehicles],
+    ['السائقون', DB.drivers],
+    ['مصاريف_الأسطول', DB.vehicleExpenses],
+    ['الأصول_الثابتة', DB.assets.map(a=>({...a, الإهلاك_المتراكم:assetAccumDep(a), القيمة_الدفترية:assetBookValue(a)}))],
+    ['السندات', DB.vouchers],
+  ];
+  sheets.forEach(([name, data])=>{
+    if(!data || !data.length) return;
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, name.slice(0,28));
+  });
+  XLSX.writeFile(wb, `بيانات-النشاط-الكاملة-${todayStr()}.xlsx`);
+  showToast('تم تصدير كل البيانات');
+}
+
+// ---------- Global helper for price autofill ----------
+window.__fillPrice = function(sel, targetId){
+  const opt = sel.options[sel.selectedIndex];
+  const price = opt.getAttribute('data-price');
+  if(price) document.getElementById(targetId).value = price;
+};
+window.__fillCost = function(sel, targetId){
+  const opt = sel.options[sel.selectedIndex];
+  const cost = opt.getAttribute('data-cost');
+  if(cost) document.getElementById(targetId).value = cost;
+};
+window.__fillVehicleDriver = function(sel){
+  const form = sel.form;
+  if(sel.name==='vehicleId'){
+    const opt = sel.options[sel.selectedIndex];
+    const plate = opt.getAttribute('data-plate');
+    if(plate) form.querySelector('[name="truckNo"]').value = plate;
+  } else if(sel.name==='driverId'){
+    const opt = sel.options[sel.selectedIndex];
+    const name = opt.getAttribute('data-name');
+    if(name) form.querySelector('[name="driver"]').value = name;
+  }
+};
+window.__fillTripPrices = function(sel){
+  const opt = sel.options[sel.selectedIndex];
+  const form = sel.form;
+  const cost = opt.getAttribute('data-cost');
+  const price = opt.getAttribute('data-price');
+  if(cost) form.querySelector('#tripPurchasePrice').value = cost;
+  if(price) form.querySelector('#tripSalePrice').value = price;
+  window.__calcTripValue(form,'purchase');
+  window.__calcTripValue(form,'sale');
+};
+window.__fillVoucherInvoices = function(form){
+  const type = form.querySelector('[name="type"]').value;
+  const sel = form.querySelector('#voucherInvoiceId');
+  const invoices = openInvoicesForVoucher(type, null);
+  if(invoices.length===0){
+    sel.innerHTML = `<option value="">لا توجد فواتير مستحقة</option>`;
+    form.querySelector('#voucherAmount').value = '';
+    return;
+  }
+  sel.innerHTML = invoices.map(inv=>{
+    const partyLabel = type==='receipt' ? customerName(inv.customerId) : supplierName(inv.supplierId);
+    const due = inv.total - inv.paid;
+    return `<option value="${inv.id}" data-due="${due}">${partyLabel} — ${inv.date} — مستحق ${fmt(due)}</option>`;
+  }).join('');
+  window.__fillVoucherAmount(form);
+};
+window.__fillVoucherAmount = function(form){
+  const sel = form.querySelector('#voucherInvoiceId');
+  const opt = sel.options[sel.selectedIndex];
+  if(opt){ const due = opt.getAttribute('data-due'); if(due) form.querySelector('#voucherAmount').value = due; }
+};
+window.__calcTripValue = function(form, side){
+  if(side==='purchase'){
+    const qty = parseFloat(form.querySelector('[name="purchaseQty"]').value)||0;
+    const price = parseFloat(form.querySelector('[name="purchasePrice"]').value)||0;
+    form.querySelector('#tripPurchaseValue').value = (qty*price) ? (qty*price).toFixed(2) : '';
+  } else {
+    const qty = parseFloat(form.querySelector('[name="saleQty"]').value)||0;
+    const price = parseFloat(form.querySelector('[name="salePrice"]').value)||0;
+    form.querySelector('#tripSaleValue').value = (qty*price) ? (qty*price).toFixed(2) : '';
+  }
+};
+
+// ---------- Event handlers ----------
+function attachHandlers(){
+  // Inventory
+  const btnAddProduct = document.getElementById('btnAddProduct');
+  if(btnAddProduct) btnAddProduct.addEventListener('click', ()=> togglePanel('productFormPanel'));
+  const cancelProduct = document.getElementById('cancelProduct');
+  if(cancelProduct) cancelProduct.addEventListener('click', ()=> togglePanel('productFormPanel', false));
+  const productForm = document.getElementById('productForm');
+  if(productForm) productForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(productForm);
+    const newProduct = { id:uid(), name:f.get('name').trim(), unit:f.get('unit'), qty:parseFloat(f.get('qty'))||0, cost:parseFloat(f.get('cost'))||0, price:parseFloat(f.get('price'))||0 };
+    DB.products.push(newProduct);
+    if(newProduct.qty>0) addStock(newProduct.id, mainWarehouseId(), newProduct.qty);
+    await saveDB(); showToast('تم إضافة الصنف'); renderPage();
+  });
+  document.querySelectorAll('[data-del-product]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.products = DB.products.filter(p=>p.id!==b.dataset.delProduct);
+    await saveDB(); showToast('تم حذف الصنف'); renderPage();
+  }));
+
+  // Crushers
+  const btnAddCrusher = document.getElementById('btnAddCrusher');
+  if(btnAddCrusher) btnAddCrusher.addEventListener('click', ()=> togglePanel('crusherFormPanel'));
+  const cancelCrusher = document.getElementById('cancelCrusher');
+  if(cancelCrusher) cancelCrusher.addEventListener('click', ()=> togglePanel('crusherFormPanel', false));
+  const crusherForm = document.getElementById('crusherForm');
+  if(crusherForm) crusherForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(crusherForm);
+    DB.crushers.push({ id:uid(), name:f.get('name').trim(), location:f.get('location').trim(), dailyCapacity:parseFloat(f.get('dailyCapacity'))||0, unit:f.get('unit'), operatingCost:parseFloat(f.get('operatingCost'))||0 });
+    await saveDB(); showToast('تم إضافة الكسارة'); renderPage();
+  });
+  document.querySelectorAll('[data-del-crusher]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.crushers = DB.crushers.filter(c=>c.id!==b.dataset.delCrusher);
+    await saveDB(); showToast('تم حذف الكسارة'); renderPage();
+  }));
+
+  // Production (crusher output feeding inventory)
+  const btnAddProduction = document.getElementById('btnAddProduction');
+  if(btnAddProduction) btnAddProduction.addEventListener('click', ()=> togglePanel('productionFormPanel'));
+  const cancelProduction = document.getElementById('cancelProduction');
+  if(cancelProduction) cancelProduction.addEventListener('click', ()=> togglePanel('productionFormPanel', false));
+  const productionForm = document.getElementById('productionForm');
+  if(productionForm) productionForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(productionForm);
+    const qty = parseFloat(f.get('qty'))||0;
+    const cost = parseFloat(f.get('cost'))||0;
+    const newName = f.get('newProductName').trim();
+    const existingName = f.get('productName');
+    let product;
+    if(newName){
+      const unitCost = qty>0 ? cost/qty : 0;
+      product = { id:uid(), name:newName, unit:f.get('unit'), qty:0, cost:unitCost, price:unitCost*1.3 };
+      DB.products.push(product);
+    } else {
+      product = DB.products.find(p=>p.name===existingName);
+      if(!product){ showToast('اختر صنفاً أو اكتب اسم صنف جديد'); return; }
+    }
+    const newTotalQty = product.qty + qty;
+    const unitCostThisRun = qty>0 ? cost/qty : 0;
+    product.cost = newTotalQty>0 ? ((product.cost*product.qty)+(unitCostThisRun*qty))/newTotalQty : product.cost;
+    product.qty = newTotalQty;
+    if(qty>0) addStock(product.id, mainWarehouseId(), qty);
+    DB.production.push({ id:uid(), date:f.get('date'), crusherId:f.get('crusherId'), productId:product.id, qty, cost });
+    await saveDB(); showToast('تم تسجيل الإنتاج وإضافته للمخزون'); renderPage();
+  });
+  document.querySelectorAll('[data-del-production]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.production = DB.production.filter(p=>p.id!==b.dataset.delProduction);
+    await saveDB(); showToast('تم حذف سجل الإنتاج'); renderPage();
+  }));
+
+  // Fleet: Vehicles
+  const btnAddVehicle = document.getElementById('btnAddVehicle');
+  if(btnAddVehicle) btnAddVehicle.addEventListener('click', ()=> togglePanel('vehicleFormPanel'));
+  const cancelVehicle = document.getElementById('cancelVehicle');
+  if(cancelVehicle) cancelVehicle.addEventListener('click', ()=> togglePanel('vehicleFormPanel', false));
+  const vehicleForm = document.getElementById('vehicleForm');
+  if(vehicleForm) vehicleForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(vehicleForm);
+    DB.vehicles.push({ id:uid(), plateNo:f.get('plateNo').trim(), type:f.get('type'), owner:f.get('owner'), notes:f.get('notes').trim() });
+    await saveDB(); showToast('تم إضافة السيارة'); renderPage();
+  });
+  document.querySelectorAll('[data-del-vehicle]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.vehicles = DB.vehicles.filter(v=>v.id!==b.dataset.delVehicle);
+    await saveDB(); showToast('تم حذف السيارة'); renderPage();
+  }));
+
+  // Fleet: Drivers
+  const btnAddDriver = document.getElementById('btnAddDriver');
+  if(btnAddDriver) btnAddDriver.addEventListener('click', ()=> togglePanel('driverFormPanel'));
+  const cancelDriver = document.getElementById('cancelDriver');
+  if(cancelDriver) cancelDriver.addEventListener('click', ()=> togglePanel('driverFormPanel', false));
+  const driverForm = document.getElementById('driverForm');
+  if(driverForm) driverForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(driverForm);
+    DB.drivers.push({ id:uid(), name:f.get('name').trim(), phone:f.get('phone').trim(), licenseNo:f.get('licenseNo').trim() });
+    await saveDB(); showToast('تم إضافة السائق'); renderPage();
+  });
+  document.querySelectorAll('[data-del-driver]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.drivers = DB.drivers.filter(d=>d.id!==b.dataset.delDriver);
+    await saveDB(); showToast('تم حذف السائق'); renderPage();
+  }));
+
+  // Fleet: Vehicle expenses
+  const btnAddVehicleExpense = document.getElementById('btnAddVehicleExpense');
+  if(btnAddVehicleExpense) btnAddVehicleExpense.addEventListener('click', ()=> togglePanel('vehicleExpenseFormPanel'));
+  const cancelVehicleExpense = document.getElementById('cancelVehicleExpense');
+  if(cancelVehicleExpense) cancelVehicleExpense.addEventListener('click', ()=> togglePanel('vehicleExpenseFormPanel', false));
+  const vehicleExpenseForm = document.getElementById('vehicleExpenseForm');
+  if(vehicleExpenseForm) vehicleExpenseForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(vehicleExpenseForm);
+    DB.vehicleExpenses.push({ id:uid(), date:f.get('date'), vehicleId:f.get('vehicleId'), type:f.get('type'), amount:parseFloat(f.get('amount'))||0, notes:f.get('notes').trim() });
+    await saveDB(); showToast('تم تسجيل مصروف السيارة'); renderPage();
+  });
+  document.querySelectorAll('[data-del-vehicle-expense]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.vehicleExpenses = DB.vehicleExpenses.filter(x=>x.id!==b.dataset.delVehicleExpense);
+    await saveDB(); showToast('تم حذف المصروف'); renderPage();
+  }));
+
+  // Fleet: profitability report filter
+  const fleetReportForm = document.getElementById('fleetReportForm');
+  if(fleetReportForm) fleetReportForm.addEventListener('submit', e=>{
+    e.preventDefault();
+    const f = new FormData(fleetReportForm);
+    document.getElementById('fleetReportResult').innerHTML = fleetReportTable(f.get('from')||null, f.get('to')||null);
+  });
+
+  // Sales
+  const btnAddSale = document.getElementById('btnAddSale');
+  if(btnAddSale) btnAddSale.addEventListener('click', ()=> togglePanel('saleFormPanel'));
+  const cancelSale = document.getElementById('cancelSale');
+  if(cancelSale) cancelSale.addEventListener('click', ()=> togglePanel('saleFormPanel', false));
+  const saleForm = document.getElementById('saleForm');
+  if(saleForm) saleForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(saleForm);
+    const productId = f.get('productId');
+    const qty = parseFloat(f.get('qty'))||0;
+    const price = parseFloat(f.get('price'))||0;
+    const paid = parseFloat(f.get('paid'))||0;
+    const product = DB.products.find(p=>p.id===productId);
+    if(product){
+      if(qty > product.qty){ showToast('الكمية المطلوبة أكبر من المتاح في المخزون'); return; }
+      product.qty -= qty;
+      removeStock(product.id, mainWarehouseId(), qty);
+    }
+    DB.sales.push({ id:uid(), date:f.get('date'), customerId:f.get('customerId'), productId, qty, price, total:qty*price, paid });
+    await saveDB(); showToast('تم حفظ الفاتورة'); renderPage();
+  });
+  document.querySelectorAll('[data-del-sale]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.sales = DB.sales.filter(s=>s.id!==b.dataset.delSale);
+    await saveDB(); showToast('تم حذف الفاتورة'); renderPage();
+  }));
+
+  // Purchases
+  const btnAddPurchase = document.getElementById('btnAddPurchase');
+  if(btnAddPurchase) btnAddPurchase.addEventListener('click', ()=> togglePanel('purchaseFormPanel'));
+  const cancelPurchase = document.getElementById('cancelPurchase');
+  if(cancelPurchase) cancelPurchase.addEventListener('click', ()=> togglePanel('purchaseFormPanel', false));
+  const purchaseForm = document.getElementById('purchaseForm');
+  if(purchaseForm) purchaseForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(purchaseForm);
+    const qty = parseFloat(f.get('qty'))||0;
+    const price = parseFloat(f.get('price'))||0;
+    const paid = parseFloat(f.get('paid'))||0;
+    const newName = f.get('newProductName').trim();
+    const existingName = f.get('productName');
+    let product;
+    if(newName){
+      product = { id:uid(), name:newName, unit:f.get('unit'), qty:0, cost:price, price: price*1.2 };
+      DB.products.push(product);
+    } else {
+      product = DB.products.find(p=>p.name===existingName);
+      if(!product){ showToast('اختر صنفاً أو اكتب اسم صنف جديد'); return; }
+    }
+    // update weighted average cost & increase qty
+    const newTotalQty = product.qty + qty;
+    product.cost = newTotalQty>0 ? ((product.cost*product.qty)+(price*qty))/newTotalQty : price;
+    product.qty = newTotalQty;
+    if(qty>0) addStock(product.id, mainWarehouseId(), qty);
+    DB.purchases.push({ id:uid(), date:f.get('date'), supplierId:f.get('supplierId'), productId:product.id, qty, price, total:qty*price, paid });
+    await saveDB(); showToast('تم حفظ فاتورة الشراء'); renderPage();
+  });
+  document.querySelectorAll('[data-del-purchase]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.purchases = DB.purchases.filter(p=>p.id!==b.dataset.delPurchase);
+    await saveDB(); showToast('تم حذف الفاتورة'); renderPage();
+  }));
+
+  // Transport
+  const btnAddTransport = document.getElementById('btnAddTransport');
+  if(btnAddTransport) btnAddTransport.addEventListener('click', ()=> togglePanel('transportFormPanel'));
+  const cancelTransport = document.getElementById('cancelTransport');
+  if(cancelTransport) cancelTransport.addEventListener('click', ()=> togglePanel('transportFormPanel', false));
+  const transportForm = document.getElementById('transportForm');
+  if(transportForm) transportForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(transportForm);
+    const date = f.get('date');
+    const productId = f.get('productId')||null;
+    const supplierId = f.get('supplierId')||'';
+    const purchaseQty = parseFloat(f.get('purchaseQty'))||0;
+    const purchasePrice = parseFloat(f.get('purchasePrice'))||0;
+    const customerId = f.get('customerId')||'';
+    const saleQty = parseFloat(f.get('saleQty'))||0;
+    const salePrice = parseFloat(f.get('salePrice'))||0;
+    const cost = parseFloat(f.get('cost'))||0;
+
+    let linkedPurchaseId = null, linkedSaleId = null;
+    const product = productId ? DB.products.find(p=>p.id===productId) : null;
+
+    // Purchase side: add stock in
+    if(supplierId && purchaseQty>0 && product){
+      const newTotalQty = product.qty + purchaseQty;
+      product.cost = newTotalQty>0 ? ((product.cost*product.qty)+(purchasePrice*purchaseQty))/newTotalQty : purchasePrice;
+      product.qty = newTotalQty;
+      addStock(product.id, mainWarehouseId(), purchaseQty);
+      linkedPurchaseId = uid();
+      DB.purchases.push({ id:linkedPurchaseId, date, supplierId, productId, qty:purchaseQty, price:purchasePrice, total:purchaseQty*purchasePrice, paid:0 });
+    }
+    // Sale side: remove stock out
+    if(customerId && saleQty>0 && product){
+      if(saleQty > product.qty){ showToast('كمية البيع أكبر من المتاح في المخزون بعد الشراء'); return; }
+      product.qty -= saleQty;
+      removeStock(product.id, mainWarehouseId(), saleQty);
+      linkedSaleId = uid();
+      DB.sales.push({ id:linkedSaleId, date, customerId, productId, qty:saleQty, price:salePrice, total:saleQty*salePrice, paid:0 });
+    }
+
+    const purchaseValue = purchaseQty*purchasePrice;
+    const saleValue = saleQty*salePrice;
+    DB.transport.push({
+      id:uid(), date, driver:f.get('driver').trim(), truckNo:f.get('truckNo').trim(),
+      vehicleId: f.get('vehicleId')||null, driverId: f.get('driverId')||null,
+      from:f.get('from').trim(), to:f.get('to').trim(), productId,
+      supplierId: supplierId||null, purchaseQty, purchasePrice, purchaseValue,
+      customerId: customerId||null, saleQty, salePrice, saleValue,
+      cost, profit: saleValue - purchaseValue - cost,
+      linkedPurchaseId, linkedSaleId
+    });
+    await saveDB(); showToast('تم حفظ شيت الرحلة'); renderPage();
+  });
+  document.querySelectorAll('[data-del-transport]').forEach(b=>b.addEventListener('click', async ()=>{
+    const trip = DB.transport.find(t=>t.id===b.dataset.delTransport);
+    if(trip){
+      const product = trip.productId ? DB.products.find(p=>p.id===trip.productId) : null;
+      if(trip.linkedPurchaseId){
+        DB.purchases = DB.purchases.filter(p=>p.id!==trip.linkedPurchaseId);
+        if(product){ product.qty -= trip.purchaseQty; removeStock(product.id, mainWarehouseId(), trip.purchaseQty); }
+      }
+      if(trip.linkedSaleId){
+        DB.sales = DB.sales.filter(s=>s.id!==trip.linkedSaleId);
+        if(product){ product.qty += trip.saleQty; addStock(product.id, mainWarehouseId(), trip.saleQty); }
+      }
+    }
+    DB.transport = DB.transport.filter(t=>t.id!==b.dataset.delTransport);
+    await saveDB(); showToast('تم حذف الرحلة وأثرها على المخزون والفواتير المرتبطة'); renderPage();
+  }));
+
+  // Finance / expenses
+  const btnAddExpense = document.getElementById('btnAddExpense');
+  if(btnAddExpense) btnAddExpense.addEventListener('click', ()=> togglePanel('expenseFormPanel'));
+  const cancelExpense = document.getElementById('cancelExpense');
+  if(cancelExpense) cancelExpense.addEventListener('click', ()=> togglePanel('expenseFormPanel', false));
+  const expenseForm = document.getElementById('expenseForm');
+  if(expenseForm) expenseForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(expenseForm);
+    DB.expenses.push({ id:uid(), date:f.get('date'), desc:f.get('desc').trim(), amount:parseFloat(f.get('amount'))||0 });
+    await saveDB(); showToast('تم تسجيل المصروف'); renderPage();
+  });
+  document.querySelectorAll('[data-del-expense]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.expenses = DB.expenses.filter(x=>x.id!==b.dataset.delExpense);
+    await saveDB(); showToast('تم حذف المصروف'); renderPage();
+  }));
+
+  // Contacts
+  const customerForm = document.getElementById('customerForm');
+  if(customerForm) customerForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(customerForm);
+    DB.customers.push({ id:uid(), name:f.get('name').trim(), phone:f.get('phone').trim() });
+    await saveDB(); showToast('تم إضافة العميل'); renderPage();
+  });
+  document.querySelectorAll('[data-del-customer]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.customers = DB.customers.filter(c=>c.id!==b.dataset.delCustomer);
+    await saveDB(); showToast('تم حذف العميل'); renderPage();
+  }));
+  const supplierForm = document.getElementById('supplierForm');
+  if(supplierForm) supplierForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(supplierForm);
+    DB.suppliers.push({ id:uid(), name:f.get('name').trim(), phone:f.get('phone').trim() });
+    await saveDB(); showToast('تم إضافة المورد'); renderPage();
+  });
+  document.querySelectorAll('[data-del-supplier]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.suppliers = DB.suppliers.filter(s=>s.id!==b.dataset.delSupplier);
+    await saveDB(); showToast('تم حذف المورد'); renderPage();
+  }));
+
+  // Warehouses
+  const btnAddWarehouse = document.getElementById('btnAddWarehouse');
+  if(btnAddWarehouse) btnAddWarehouse.addEventListener('click', ()=> togglePanel('warehouseFormPanel'));
+  const cancelWarehouse = document.getElementById('cancelWarehouse');
+  if(cancelWarehouse) cancelWarehouse.addEventListener('click', ()=> togglePanel('warehouseFormPanel', false));
+  const warehouseForm = document.getElementById('warehouseForm');
+  if(warehouseForm) warehouseForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(warehouseForm);
+    DB.warehouses.push({ id:uid(), name:f.get('name').trim(), location:f.get('location').trim() });
+    await saveDB(); showToast('تم إضافة المخزن'); renderPage();
+  });
+  document.querySelectorAll('[data-del-warehouse]').forEach(b=>b.addEventListener('click', async ()=>{
+    const wid = b.dataset.delWarehouse;
+    const hasStock = DB.stock.some(s=>s.warehouseId===wid && s.qty>0.0001);
+    if(hasStock){ showToast('لا يمكن حذف مخزن يحتوي كمية مخزون — رحّل الكميات أولاً'); return; }
+    DB.warehouses = DB.warehouses.filter(w=>w.id!==wid);
+    DB.stock = DB.stock.filter(s=>s.warehouseId!==wid);
+    await saveDB(); showToast('تم حذف المخزن'); renderPage();
+  }));
+  const transferForm = document.getElementById('transferForm');
+  if(transferForm) transferForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(transferForm);
+    const productId = f.get('productId'), fromWarehouseId = f.get('fromWarehouseId'), toWarehouseId = f.get('toWarehouseId');
+    const qty = parseFloat(f.get('qty'))||0;
+    if(!productId || qty<=0){ showToast('أدخل بيانات صحيحة'); return; }
+    if(fromWarehouseId===toWarehouseId){ showToast('اختر مخزنين مختلفين'); return; }
+    const available = stockQty(productId, fromWarehouseId);
+    if(qty > available){ showToast('الكمية أكبر من المتاح في المخزن المصدر'); return; }
+    removeStock(productId, fromWarehouseId, qty);
+    addStock(productId, toWarehouseId, qty);
+    DB.transfers.push({ id:uid(), date:todayStr(), productId, fromWarehouseId, toWarehouseId, qty });
+    await saveDB(); showToast('تم تنفيذ التحويل'); renderPage();
+  });
+  document.querySelectorAll('[data-del-transfer]').forEach(b=>b.addEventListener('click', async ()=>{
+    const t = DB.transfers.find(x=>x.id===b.dataset.delTransfer);
+    if(t){ addStock(t.productId, t.fromWarehouseId, t.qty); removeStock(t.productId, t.toWarehouseId, t.qty); }
+    DB.transfers = DB.transfers.filter(x=>x.id!==b.dataset.delTransfer);
+    await saveDB(); showToast('تم حذف التحويل وعكس أثره'); renderPage();
+  }));
+
+  // Fixed assets
+  const btnAddAsset = document.getElementById('btnAddAsset');
+  if(btnAddAsset) btnAddAsset.addEventListener('click', ()=> togglePanel('assetFormPanel'));
+  const cancelAsset = document.getElementById('cancelAsset');
+  if(cancelAsset) cancelAsset.addEventListener('click', ()=> togglePanel('assetFormPanel', false));
+  const assetForm = document.getElementById('assetForm');
+  if(assetForm) assetForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(assetForm);
+    DB.assets.push({
+      id:uid(), name:f.get('name').trim(), category:f.get('category'), purchaseDate:f.get('purchaseDate'),
+      cost:parseFloat(f.get('cost'))||0, usefulLife:parseFloat(f.get('usefulLife'))||1,
+      salvage:parseFloat(f.get('salvage'))||0, location:f.get('location').trim()
+    });
+    await saveDB(); showToast('تم إضافة الأصل'); renderPage();
+  });
+  document.querySelectorAll('[data-del-asset]').forEach(b=>b.addEventListener('click', async ()=>{
+    DB.assets = DB.assets.filter(a=>a.id!==b.dataset.delAsset);
+    await saveDB(); showToast('تم حذف الأصل'); renderPage();
+  }));
+
+  // Vouchers (receipts & payments)
+  const btnAddVoucher = document.getElementById('btnAddVoucher');
+  if(btnAddVoucher) btnAddVoucher.addEventListener('click', ()=>{
+    togglePanel('voucherFormPanel');
+    const vf = document.getElementById('voucherForm');
+    if(vf) window.__fillVoucherInvoices(vf);
+  });
+  const cancelVoucher = document.getElementById('cancelVoucher');
+  if(cancelVoucher) cancelVoucher.addEventListener('click', ()=> togglePanel('voucherFormPanel', false));
+  const voucherForm = document.getElementById('voucherForm');
+  if(voucherForm) voucherForm.addEventListener('submit', async e=>{
+    e.preventDefault();
+    const f = new FormData(voucherForm);
+    const type = f.get('type');
+    const invoiceId = f.get('invoiceId');
+    let amount = parseFloat(f.get('amount'))||0;
+    if(!invoiceId){ showToast('لا توجد فاتورة لربط السند بها'); return; }
+    if(type==='receipt'){
+      const inv = DB.sales.find(s=>s.id===invoiceId);
+      if(!inv){ showToast('الفاتورة غير موجودة'); return; }
+      const due = inv.total - inv.paid;
+      if(amount<=0 || amount>due+0.001){ showToast('المبلغ غير صحيح — أكبر من المستحق'); return; }
+      inv.paid += amount;
+      DB.vouchers.push({ id:uid(), date:f.get('date'), type, partyId:inv.customerId, invoiceId, amount, desc:f.get('desc').trim() });
+    } else {
+      const inv = DB.purchases.find(p=>p.id===invoiceId);
+      if(!inv){ showToast('الفاتورة غير موجودة'); return; }
+      const due = inv.total - inv.paid;
+      if(amount<=0 || amount>due+0.001){ showToast('المبلغ غير صحيح — أكبر من المستحق'); return; }
+      inv.paid += amount;
+      DB.vouchers.push({ id:uid(), date:f.get('date'), type, partyId:inv.supplierId, invoiceId, amount, desc:f.get('desc').trim() });
+    }
+    await saveDB(); showToast('تم حفظ السند'); renderPage();
+  });
+  document.querySelectorAll('[data-del-voucher]').forEach(b=>b.addEventListener('click', async ()=>{
+    const v = DB.vouchers.find(x=>x.id===b.dataset.delVoucher);
+    if(v){
+      if(v.type==='receipt'){ const inv = DB.sales.find(s=>s.id===v.invoiceId); if(inv) inv.paid -= v.amount; }
+      else { const inv = DB.purchases.find(p=>p.id===v.invoiceId); if(inv) inv.paid -= v.amount; }
+    }
+    DB.vouchers = DB.vouchers.filter(x=>x.id!==b.dataset.delVoucher);
+    await saveDB(); showToast('تم حذف السند وعكس أثره على الفاتورة'); renderPage();
+  }));
+
+  // Backup / export
+  const btnBackupDownload = document.getElementById('btnBackupDownload');
+  if(btnBackupDownload) btnBackupDownload.addEventListener('click', downloadBackup);
+  const btnBackupRestoreTrigger = document.getElementById('btnBackupRestoreTrigger');
+  const backupRestoreInput = document.getElementById('backupRestoreInput');
+  if(btnBackupRestoreTrigger && backupRestoreInput) btnBackupRestoreTrigger.addEventListener('click', ()=>{
+    if(confirm('سيتم استبدال كل البيانات الحالية بالنسخة المستوردة. هل تريد المتابعة؟')) backupRestoreInput.click();
+  });
+  if(backupRestoreInput) backupRestoreInput.addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(file) restoreBackup(file);
+  });
+  const btnExportAllExcel = document.getElementById('btnExportAllExcel');
+  if(btnExportAllExcel) btnExportAllExcel.addEventListener('click', exportAllExcel);
+}
+
+// ---------- Attachments ----------
+function attachBadge(entity){
+  if(!entity || !entity.id) return '';
+  const n = DB.attachments.filter(a=>a.key.endsWith(':'+entity.id)).length;
+  return n ? `<span class="attach-badge">${n}</span>` : '';
+}
+let currentAttachKey = null;
+function attachAttachButtons(){
+  document.querySelectorAll('[data-attach]').forEach(b=>{
+    b.addEventListener('click', ()=> openAttachModal(b.dataset.attach));
+  });
+  const closeBtn = document.getElementById('attachModalClose');
+  if(closeBtn) closeBtn.onclick = closeAttachModal;
+  const overlay = document.getElementById('attachModalOverlay');
+  if(overlay) overlay.onclick = (e)=>{ if(e.target===overlay) closeAttachModal(); };
+  const fileInput = document.getElementById('attachFileInput');
+  if(fileInput) fileInput.onchange = handleAttachFile;
+}
+function openAttachModal(key){
+  currentAttachKey = key;
+  document.getElementById('attachModalOverlay').classList.add('show');
+  renderAttachList();
+}
+function closeAttachModal(){
+  document.getElementById('attachModalOverlay').classList.remove('show');
+  currentAttachKey = null;
+  const fi = document.getElementById('attachFileInput');
+  if(fi) fi.value = '';
+}
+function renderAttachList(){
+  const list = document.getElementById('attachList');
+  if(!list) return;
+  const items = DB.attachments.filter(a=>a.key===currentAttachKey);
+  list.innerHTML = items.length ? items.map(a=>`
+    <div class="attach-item">
+      <a href="${a.dataURL}" download="${a.name}" target="_blank" rel="noopener">📎 ${a.name}</a>
+      <button class="tag-del" data-del-attach="${a.id}">🗑️</button>
+    </div>`).join('') : `<div class="attach-empty">لا توجد مرفقات بعد لهذا العنصر</div>`;
+  list.querySelectorAll('[data-del-attach]').forEach(b=> b.addEventListener('click', async ()=>{
+    DB.attachments = DB.attachments.filter(a=>a.id!==b.dataset.delAttach);
+    await saveDB(); renderAttachList(); renderPage();
+  }));
+}
+async function handleAttachFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!currentAttachKey) return;
+  if(file.size > 6*1024*1024){ showToast('الملف كبير جداً — الحد الأقصى 6MB'); e.target.value=''; return; }
+  try{
+    const dataURL = await new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result);
+      r.onerror = ()=> reject(r.error);
+      r.readAsDataURL(file);
+    });
+    DB.attachments.push({ id:uid(), key:currentAttachKey, name:file.name, type:file.type, size:file.size, date:todayStr(), dataURL });
+    await saveDB();
+    e.target.value = '';
+    renderAttachList();
+    renderPage();
+    showToast('تم إضافة المرفق');
+  }catch(err){
+    showToast('تعذرت إضافة المرفق');
+  }
+}
+
+function togglePanel(id, show){
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(show===undefined) show = el.style.display==='none';
+  el.style.display = show ? 'block' : 'none';
+}
+
+// ---------- Init ----------
+(async function init(){
+  document.getElementById('mainArea').innerHTML = `<div class="empty-state"><div class="icon">⛰️</div><p>جارٍ تحميل البيانات...</p></div>`;
+  await loadDB();
+  renderNav();
+  renderPage();
+})();
+</script>
+</body>
+</html>
